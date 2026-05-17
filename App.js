@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
+import AppRoutes from './src/routes/AppRoutes';
 
-// Componente que decide qual tela mostrar baseado no status de login
 const RootNavigator = () => {
   const { session, loading } = useAuth();
 
@@ -15,12 +16,11 @@ const RootNavigator = () => {
     );
   }
 
-  // Se tem sessão, mostraria o app. Por enquanto, só um placeholder.
-  // Se não tem, força a ficar na tela de Login.
+  // Agora o AppRoutes cuida das abas quando o usuário está logado
   return session ? (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Você está logado! A tela Home vem aqui.</Text>
-    </View>
+    <NavigationContainer>
+      <AppRoutes />
+    </NavigationContainer>
   ) : (
     <LoginScreen />
   );
