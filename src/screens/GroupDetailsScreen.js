@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Image, Share } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../supabase';
@@ -40,7 +40,7 @@ export default function GroupDetailsScreen({ route }) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.5,
-      base64: true, // Precisamos do base64 para facilitar o upload
+      base64: true, 
     });
 
     if (!result.canceled) {
@@ -48,13 +48,23 @@ export default function GroupDetailsScreen({ route }) {
     }
   };
 
+  // Integração Nativa 2: Compartilhamento
+  const handleShareGroup = async () => {
+    try {
+      await Share.share({
+        message: `Ei! Participe do meu grupo de divisão de despesas "${groupName}". Digite este código no app para entrar: ${groupId}`,
+      });
+    } catch (error) {
+      Alert.alert('Erro', error.message);
+    }
+  };
+
   const handleSaveExpense = async () => {
-    if (!description || !amount) return Alert.alert('Erro', 'Preencha a descrição e o valor.');
+    if (!description || !amount) return Alert.alert('Atenção', 'Preencha a descrição e o valor.');
     setSaving(true);
 
     let receipt_url = null;
 
-    // Se o usuário escolheu uma imagem, fazemos o upload pro Supabase Storage
     if (image && image.base64) {
       const filePath = `${user.id}/${Date.now()}.jpg`;
       const { data, error: uploadError } = await supabase.storage
@@ -67,12 +77,10 @@ export default function GroupDetailsScreen({ route }) {
         return;
       }
       
-      // Pega a URL pública da imagem recém salva
       const { data: publicUrlData } = supabase.storage.from('receipts').getPublicUrl(filePath);
       receipt_url = publicUrlData.publicUrl;
     }
 
-    // Salva a despesa no banco de dados
     const { error: insertError } = await supabase
       .from('expenses')
       .insert([{
@@ -90,7 +98,7 @@ export default function GroupDetailsScreen({ route }) {
       setDescription('');
       setAmount('');
       setImage(null);
-      fetchExpenses(); // Recarrega a lista
+      fetchExpenses();
     }
     setSaving(false);
   };
@@ -102,7 +110,7 @@ export default function GroupDetailsScreen({ route }) {
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
         ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma despesa registrada ainda.</Text>}
         renderItem={({ item }) => (
           <View style={styles.expenseCard}>
@@ -118,11 +126,15 @@ export default function GroupDetailsScreen({ route }) {
         )}
       />
 
+      {/* Botão de Compartilhamento Nativo */}
+      <TouchableOpacity style={styles.shareButton} onPress={handleShareGroup}>
+        <Text style={styles.shareButtonText}>📲 Convidar Amigo</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <Text style={styles.fabText}>+ Despesa</Text>
       </TouchableOpacity>
 
-      {/* Modal Obrigatório de Nova Despesa */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -143,7 +155,7 @@ export default function GroupDetailsScreen({ route }) {
                   <Text style={styles.cancelText}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSaveExpense} style={styles.saveButton}>
-                  <Text style={styles.saveText}>Salvar Despesa</Text>
+                  <Text style={styles.saveText}>Salvar</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -163,7 +175,9 @@ const styles = StyleSheet.create({
   expenseUser: { fontSize: 12, color: '#666', marginTop: 4 },
   expenseAmount: { fontSize: 16, fontWeight: 'bold', color: '#cc0000' },
   receiptBadge: { fontSize: 10, color: '#fff', backgroundColor: '#0066cc', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#cc0000', padding: 15, borderRadius: 30, elevation: 5 },
+  shareButton: { backgroundColor: '#00cc66', padding: 15, marginHorizontal: 20, marginBottom: 20, borderRadius: 8, alignItems: 'center' },
+  shareButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  fab: { position: 'absolute', bottom: 80, right: 20, backgroundColor: '#cc0000', padding: 15, borderRadius: 30, elevation: 5 },
   fabText: { color: '#fff', fontWeight: 'bold' },
   modalOverlay: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: { backgroundColor: '#fff', padding: 20, borderRadius: 10 },
